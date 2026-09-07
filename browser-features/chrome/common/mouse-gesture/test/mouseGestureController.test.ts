@@ -416,6 +416,29 @@ async function testNormalRightClickRemainsAllowed(): Promise<void> {
   });
 }
 
+async function testMiddleClickRemainsAllowedAndUnsuppressed(): Promise<void> {
+  await withController({}, ({ win }) => {
+    const mouseDown = dispatchMouse(win, "mousedown", 1, 0, 0, 4);
+    const mouseUp = dispatchMouse(win, "mouseup", 1, 0, 0, 0);
+
+    assertEquals(
+      mouseDown.defaultPrevented,
+      false,
+      "normal middle mousedown should be allowed",
+    );
+    assertEquals(
+      mouseUp.defaultPrevented,
+      false,
+      "normal middle mouseup should be allowed",
+    );
+    assertEquals(
+      mouseUp.clickEventPrevented(),
+      false,
+      "normal middle mouseup should not suppress follow-up auxclick",
+    );
+  });
+}
+
 async function testDisabledWheelGesturesRemainPassive(): Promise<void> {
   await withTrackedActions(async (counts) => {
     await withController({ wheelGesturesEnabled: false }, ({ win }) => {
@@ -2186,8 +2209,12 @@ const tests: TestCase[] = [
     fn: testWheelGestureChainsWhileHeldAndConsumesResidualWheel,
   },
   {
-    name: "normal right click remains allowed",
+    name: "normal right click remains allowed and unsuppressed",
     fn: testNormalRightClickRemainsAllowed,
+  },
+  {
+    name: "normal middle click remains allowed and unsuppressed",
+    fn: testMiddleClickRemainsAllowedAndUnsuppressed,
   },
   {
     name: "disabled wheel gestures remain passive",
