@@ -392,6 +392,10 @@ async function testWheelGestureChainsWhileHeldAndConsumesResidualWheel(): Promis
   });
 }
 
+/**
+ * Verifies that normal right-click (button: 2) without movement remains
+ * unsuppressed and allows the context menu to open.
+ */
 async function testNormalRightClickRemainsAllowed(): Promise<void> {
   await withController({}, ({ win }) => {
     dispatchMouse(win, "mousedown", 2);
@@ -416,20 +420,54 @@ async function testNormalRightClickRemainsAllowed(): Promise<void> {
   });
 }
 
+/**
+ * Verifies that middle-click (button: 1) mousedown and mouseup events dispatched
+ * from content elements reach content without being canceled, and do not have their
+ * follow-up click events (auxclick) suppressed on either mousedown or mouseup.
+ */
 async function testMiddleClickRemainsAllowedAndUnsuppressed(): Promise<void> {
-  await withController({}, ({ win }) => {
-    const mouseDown = dispatchMouse(win, "mousedown", 1, 0, 0, 4);
-    const mouseUp = dispatchMouse(win, "mouseup", 1, 0, 0, 0);
+  await withControllerAndContent({}, ({ contentEl }) => {
+    let contentReceivedMouseDown = false;
+    let contentReceivedMouseUp = false;
 
+    contentEl.addEventListener("mousedown", (event: MouseEvent) => {
+      if (event.button === 1) {
+        contentReceivedMouseDown = true;
+      }
+    });
+    contentEl.addEventListener("mouseup", (event: MouseEvent) => {
+      if (event.button === 1) {
+        contentReceivedMouseUp = true;
+      }
+    });
+
+    const mouseDown = dispatchMouseFrom(contentEl, "mousedown", 1, 0, 0, 4);
+    const mouseUp = dispatchMouseFrom(contentEl, "mouseup", 1, 0, 0, 0);
+
+    assertEquals(
+      contentReceivedMouseDown,
+      true,
+      "middle mousedown should reach content element",
+    );
     assertEquals(
       mouseDown.defaultPrevented,
       false,
-      "normal middle mousedown should be allowed",
+      "normal middle mousedown should not be prevented",
+    );
+    assertEquals(
+      mouseDown.clickEventPrevented(),
+      false,
+      "normal middle mousedown should not suppress follow-up auxclick",
+    );
+    assertEquals(
+      contentReceivedMouseUp,
+      true,
+      "middle mouseup should reach content element",
     );
     assertEquals(
       mouseUp.defaultPrevented,
       false,
-      "normal middle mouseup should be allowed",
+      "normal middle mouseup should not be prevented",
     );
     assertEquals(
       mouseUp.clickEventPrevented(),
